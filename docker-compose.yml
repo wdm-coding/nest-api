@@ -1,0 +1,14 @@
+version: '3.1' # 指定 docker-compose 版本号
+services: # 定义服务列表
+  db: # 数据库服务名称
+    image: mysql # 指定镜像名称，这里使用的是官方 MySQL 镜像
+    restart: always # 容器重启策略，这里设置为总是重启
+    environment: # 设置环境变量，这里设置了 MySQL 根密码为 123456
+      MYSQL_ROOT_PASSWORD: 123456 # 数据库根密码
+    ports: # 端口映射，将容器的3306端口映射到宿主机的3090端口
+      - "3306:3306"
+  adminer: # 数据库管理工具服务
+   image: adminer # 指定镜像名称，这里使用的是官方 Adminer 镜像
+   restart: always # 容器重启策略，这里设置为总是重启
+   ports: # 端口映射，将容器的8080端口映射到宿主机的8081端口
+    - 8080:8080
