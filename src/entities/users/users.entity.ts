@@ -1,15 +1,7 @@
 import { Logs } from '../logs/logs.entity'
 import { Profile } from '../profile/profile.entity'
 import { Roles } from '../roles/roles.entity'
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  OneToMany,
-  ManyToMany,
-  JoinTable,
-  OneToOne
-} from 'typeorm'
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToMany, JoinTable, OneToOne } from 'typeorm'
 @Entity() // 实体类装饰器，告诉 TypeORM 这个类是一个实体类。
 export class Users {
   @PrimaryGeneratedColumn() // 主键字段装饰器，告诉 TypeORM 这个属性是主键。

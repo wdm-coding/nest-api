@@ -2,6 +2,8 @@ import { Controller, Delete, Get, Post, Inject, LoggerService, Body, Param, Put,
 import { UserService } from './user.service'
 import { Users } from '../entities/users/users.entity'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
+import { UserQuery } from '../types/query.d'
+
 @Controller('user')
 export class UserController {
   constructor(
@@ -11,9 +13,9 @@ export class UserController {
   ) {}
   // 查询所有用户
   @Get('list')
-  async getUsers(@Query() query: any): Promise<any> {
+  async getUsers(@Query() query: UserQuery): Promise<any> {
     console.log('query', query)
-    const result = await this.userService.findAll()
+    const result = await this.userService.findAll(query)
     return {
       code: 0,
       msg: 'success',
