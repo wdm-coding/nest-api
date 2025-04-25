@@ -1,10 +1,24 @@
-import { Controller, Delete, Get, Post, Inject, LoggerService, Body, Param, Put, Query } from '@nestjs/common'
+import {
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Inject,
+  LoggerService,
+  Body,
+  Param,
+  Put,
+  Query,
+  UseFilters
+} from '@nestjs/common'
 import { UserService } from './user.service'
 import { Users } from '../entities/users/users.entity'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { UserQuery } from '../types/query.d'
+import { TypeormFilter } from 'src/filters/typeorm.filter'
 
 @Controller('user')
+@UseFilters(new TypeormFilter())
 export class UserController {
   constructor(
     private userService: UserService,
@@ -14,7 +28,6 @@ export class UserController {
   // 查询所有用户
   @Get('list')
   async getUsers(@Query() query: UserQuery): Promise<any> {
-    console.log('query', query)
     const result = await this.userService.findAll(query)
     return {
       code: 0,

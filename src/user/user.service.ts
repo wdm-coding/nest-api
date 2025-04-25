@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
+import { conditionUtils } from '../utils/db.helper'
 @Injectable() // NestJS装饰器，用于将类标记为服务。
 export class UserService {
   constructor(
@@ -10,32 +11,41 @@ export class UserService {
     private readonly userRepository: Repository<Users> // 并将其赋值给userRepository属性。
   ) {}
   // 查询所有用户信息
-  findAll(query: UserQuery) {
-    const { username, roleId, gender } = query
+  async findAll(query: UserQuery) {
+    const { username, roleId, gender, pageNum, pageSize } = query
+    // 分页参数，默认为第一页每页10条数据
+    const take = Number(pageSize) || 10 // 每页显示多少条数据
+    const skip = (Number(pageNum || 1) - 1) * take // 跳过多少条数据
     // 1. 关联查询
     const queryBuilder = this.userRepository
       .createQueryBuilder('users')
       .leftJoinAndSelect('users.profile', 'profile')
       .leftJoinAndSelect('users.roles', 'roles')
-      // 2. 条件查询 条件为空时不查询
-      // if (username) queryBuilder.where('users.username LIKE :username', { username: `%${username}%` })
-      // if (roleId) queryBuilder.andWhere('roles.id = :roleId', { roleId })
-      // if (gender) queryBuilder.andWhere('profile.gender = :gender', { gender })
-      // 3. 动态查询条件，如果条件为空则不添加该条件。(第一个查询条件为1=1，后续的条件为AND条件)
+      // 2. 动态查询条件，如果条件为空则不添加该条件。(第一个查询条件为1=1，后续的条件为AND条件)
       .where(username ? 'users.username LIKE :username' : '1=1', username ? { username: `%${username}%` } : {})
     const searchList = {
-      'roles.id = :roleId': roleId,
-      'profile.gender = :gender': gender
+      'roles.id': roleId,
+      'profile.gender': gender
     }
-    Object.keys(searchList).forEach(key => {
-      if (searchList[key]) {
-        console.log(`${key} = :${searchList[key]}`, { [searchList[key]]: searchList[key] })
-        queryBuilder.andWhere(`${key} = :${searchList[key]}`, { [searchList[key]]: searchList[key] })
-      }
-    })
-    // .andWhere('roles.id = :roleId',{ roleId })
-    // .andWhere(gender ? 'profile.gender = :gender' : '1=1', gender ? { gender } : {})
-    return queryBuilder.getMany()
+    const list = conditionUtils<Users>(queryBuilder, searchList)
+    const total = await list.getCount() // 总条数
+    const result = await list.skip(skip).take(take).getMany()
+    // getRawMany()不直接支持分页，因为它只是执行原始SQL查询。
+    return {
+      pageSize: take, // 每页显示多少条数据
+      pageNum: Number(pageNum || 1), // 当前页码
+      total, // 总条数
+      list: result.map(item => ({
+        userId: item.id,
+        password: '',
+        address: item.profile?.address,
+        gender: item.profile?.gender,
+        phone: item.profile?.phone,
+        username: item.username,
+        roleName: item.roles.map(role => role.name).join(','),
+        roleIds: item.roles.map(role => role.id).join(',')
+      }))
+    }
   }
   // 根据id查询用户信息
   findOne(id: number) {

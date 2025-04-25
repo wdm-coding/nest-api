@@ -6,7 +6,7 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToMany, JoinTabl
 export class Users {
   @PrimaryGeneratedColumn() // 主键字段装饰器，告诉 TypeORM 这个属性是主键。
   id: number
-  @Column({ type: 'varchar', length: 255 }) // 字段装饰器，告诉 TypeORM 这个属性是一个数据库列。
+  @Column({ type: 'varchar', length: 255, unique: true }) // 字段装饰器，告诉 TypeORM 这个属性是一个数据库列。
   username: string
   @Column({ type: 'varchar', length: 255 }) // 字段装饰器，告诉 TypeORM 这个属性是一个数据库列。
   password: string
