@@ -56,21 +56,38 @@ export class UserService {
     const userTmp = await this.userRepository.create(users)
     return this.userRepository.save(userTmp)
   }
-  // 更新用户信息
-  async update(id: number, user: Partial<Users>) {
-    return this.userRepository.update(id, user)
-  }
-  // 删除用户信息
-  remove(id: number) {
-    return this.userRepository.delete(id)
-  }
   // 查询用户详情信息
   findProfile(id: number) {
     return this.userRepository.findOne({
+      where: { id },
       relations: {
         profile: true
-      },
-      where: { id }
+      }
     })
+  }
+  // 更新用户信息
+  async update(id: number, user: any) {
+    // 单模型更新，只更新部分字段。
+    // return this.userRepository.update(id, user)
+    // 多模型更新，更新关联表数据。
+    const insetData = {
+      ...user,
+      profile: {
+        address: user.address,
+        gender: user.gender,
+        phone: user.phone
+      }
+    }
+    const userTemp = await this.findProfile(id)
+    if (!userTemp) {
+      throw new Error('User not found')
+    }
+    const newUser = this.userRepository.merge(userTemp, insetData)
+    return this.userRepository.save(newUser)
+  }
+  // 删除用户信息
+  async remove(id: number) {
+    const user = await this.findOne(id)
+    return user && this.userRepository.remove(user)
   }
 }

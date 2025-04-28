@@ -7,9 +7,9 @@ import {
   LoggerService,
   Body,
   Param,
-  Put,
   Query,
-  UseFilters
+  UseFilters,
+  Patch
 } from '@nestjs/common'
 import { UserService } from './user.service'
 import { Users } from '../entities/users/users.entity'
@@ -27,7 +27,7 @@ export class UserController {
   ) {}
   // 查询所有用户
   @Get('list')
-  async getUsers(@Query() query: UserQuery): Promise<any> {
+  async getAllUsers(@Query() query: UserQuery): Promise<any> {
     const result = await this.userService.findAll(query)
     return {
       code: 0,
@@ -37,7 +37,7 @@ export class UserController {
   }
   // 根据id查询用户
   @Get('getUserById/:id')
-  getUser(): Promise<any> {
+  getUserById(): Promise<any> {
     return this.userService.findOne(1)
   }
   // 添加用户
@@ -51,9 +51,10 @@ export class UserController {
     }
   }
   // 更新用户信息
-  @Put('edit/:id')
+  @Patch('edit/:id')
   async updateUser(@Param('id') id: number, @Body() dto: Users): Promise<any> {
-    await this.userService.update(id, dto)
+    const res = await this.userService.update(id, dto)
+    console.log('res', res)
     return {
       code: 0,
       msg: 'success',
