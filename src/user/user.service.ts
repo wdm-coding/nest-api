@@ -1,14 +1,17 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { In, Repository } from 'typeorm'
 import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
 import { conditionUtils } from '../utils/db.helper'
+import { Roles } from '../entities/roles/roles.entity'
 @Injectable() // NestJS装饰器，用于将类标记为服务。
 export class UserService {
   constructor(
     @InjectRepository(Users) // 注入Repository<Users>类型，
-    private readonly userRepository: Repository<Users> // 并将其赋值给userRepository属性。
+    private readonly userRepository: Repository<Users>, // 并将其赋值给userRepository属性。
+    @InjectRepository(Roles)
+    private readonly rolesRepository: Repository<Roles>
   ) {}
   // 查询所有用户信息
   async findAll(query: UserQuery) {
@@ -52,8 +55,23 @@ export class UserService {
     return this.userRepository.findOne({ where: { id } })
   }
   // 创建用户信息
-  async create(users: Users) {
-    const userTmp = await this.userRepository.create(users)
+  async create(users: any) {
+    const insetInfo = {
+      ...users,
+      profile: {
+        address: users.address,
+        gender: users.gender,
+        phone: users.phone
+      }
+    }
+    const roles = users.roleIds.split(',').map(id => Number(id))
+    if (!roles.length) {
+      throw new Error('Role ids are required')
+    }
+    insetInfo.roles = await this.rolesRepository.find({
+      where: { id: In(roles) } // 查询条件，id在roles数组中。
+    })
+    const userTmp = this.userRepository.create(insetInfo)
     return this.userRepository.save(userTmp)
   }
   // 查询用户详情信息
@@ -78,6 +96,13 @@ export class UserService {
         phone: user.phone
       }
     }
+    const roles = user.roleIds.split(',').map(id => Number(id))
+    if (!roles.length) {
+      throw new Error('Role ids are required')
+    }
+    insetData.roles = await this.rolesRepository.find({
+      where: { id: In(roles) } // 查询条件，id在roles数组中。
+    })
     const userTemp = await this.findProfile(id)
     if (!userTemp) {
       throw new Error('User not found')

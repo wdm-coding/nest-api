@@ -20,9 +20,9 @@ export class Users {
   username: string
   @Column({ type: 'varchar', length: 255 }) // 字段装饰器，告诉 TypeORM 这个属性是一个数据库列。
   password: string
-  @OneToMany(() => Logs, logs => logs.users) // 关系装饰器，告诉 TypeORM 这个属性是一对多关系。
+  @OneToMany(() => Logs, logs => logs.users, { cascade: true }) // 关系装饰器，告诉 TypeORM 这个属性是一对多关系。
   logs: Logs[]
-  @ManyToMany(() => Roles, roles => roles.users) // 关系装饰器，告诉 TypeORM 这个属性是多对多关系。
+  @ManyToMany(() => Roles, roles => roles.users, { cascade: ['insert', 'update'] }) // 关系装饰器，告诉 TypeORM 这个属性是多对多关系。
   @JoinTable({
     name: 'users-roles', // 关联表的名字。
     joinColumn: {
