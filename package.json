@@ -20,12 +20,13 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "gen": "typeorm-model-generator -h 127.0.0.1 -d nest-test-db -p 3306 -u root -x 123456 -e mysql -o ./src/entities",
-    "typeorm":"typeorm-ts-node-commonjs"
+    "typeorm": "typeorm-ts-node-commonjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.1",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.0",
     "cross-env": "^7.0.3",
@@ -33,6 +34,8 @@
     "joi": "^17.13.3",
     "mysql2": "^3.14.0",
     "nest-winston": "^1.10.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "request-ip": "^3.3.0",
     "rxjs": "^7.8.1",

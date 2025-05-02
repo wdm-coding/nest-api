@@ -54,6 +54,10 @@ export class UserService {
   findOne(id: number) {
     return this.userRepository.findOne({ where: { id } })
   }
+  // 根据username查询用户信息
+  findOneByName(username: string) {
+    return this.userRepository.findOne({ where: { username } })
+  }
   // 创建用户信息
   async create(users: any) {
     const insetInfo = {
@@ -85,9 +89,6 @@ export class UserService {
   }
   // 更新用户信息
   async update(id: number, user: any) {
-    // 单模型更新，只更新部分字段。
-    // return this.userRepository.update(id, user)
-    // 多模型更新，更新关联表数据。
     const insetData = {
       ...user,
       profile: {
