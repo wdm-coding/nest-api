@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Inject, LoggerService, Param, Patch, Post } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Inject, LoggerService, Param, Patch, Post, UseGuards } from '@nestjs/common'
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { RolesService } from './roles.service'
 import { Roles } from '../entities/roles/roles.entity'
+import { AuthGuard } from '@nestjs/passport'
 
 @Controller('roles')
 export class RolesController {
@@ -12,6 +13,7 @@ export class RolesController {
   ) {}
   // 查询所有角色
   @Get('list')
+  @UseGuards(AuthGuard('jwt'))
   async getAllRoles(): Promise<any> {
     const result = await this.rolesService.findAll()
     return {

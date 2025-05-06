@@ -6,9 +6,9 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('signin') // 登录
-  signIn(@Body() dto: SigninUserDto) {
+  async signIn(@Body() dto: SigninUserDto) {
     const { username, password } = dto
-    const token = this.authService.signIn(username, password)
+    const token = await this.authService.signIn(username, password)
     return {
       code: 0,
       message: '登录成功',

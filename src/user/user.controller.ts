@@ -1,10 +1,23 @@
-import { Controller, Delete, Get, Post, Body, Param, Query, UseFilters, Patch, ParseIntPipe } from '@nestjs/common'
+import {
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseFilters,
+  Patch,
+  ParseIntPipe,
+  UseGuards
+} from '@nestjs/common'
 import { UserService } from './user.service'
 import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
 import { TypeormFilter } from 'src/filters/typeorm.filter'
 import { CreatUserPipe } from './pipes/creat-user.pipe'
 import { CreateUserDto } from './dto/create-user.dto'
+import { AuthGuard } from '@nestjs/passport'
 
 @Controller('user')
 @UseFilters(new TypeormFilter())
@@ -12,6 +25,7 @@ export class UserController {
   constructor(private userService: UserService) {}
   // 查询所有用户
   @Get('list')
+  @UseGuards(AuthGuard('jwt'))
   async getAllUsers(@Query() query: UserQuery): Promise<any> {
     const result = await this.userService.findAll(query)
     return {
