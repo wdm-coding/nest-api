@@ -1,8 +1,10 @@
-import { Controller, Delete, Get, Post, Body, Param, Query, UseFilters, Patch } from '@nestjs/common'
+import { Controller, Delete, Get, Post, Body, Param, Query, UseFilters, Patch, ParseIntPipe } from '@nestjs/common'
 import { UserService } from './user.service'
 import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
 import { TypeormFilter } from 'src/filters/typeorm.filter'
+import { CreatUserPipe } from './pipes/creat-user.pipe'
+import { CreateUserDto } from './dto/create-user.dto'
 
 @Controller('user')
 @UseFilters(new TypeormFilter())
@@ -20,12 +22,13 @@ export class UserController {
   }
   // 根据id查询用户
   @Get('getUserById/:id')
-  getUserById(): Promise<any> {
-    return this.userService.findOne(1)
+  getUserById(@Query('id', ParseIntPipe) id: any): Promise<any> {
+    return this.userService.findOne(id)
   }
   // 添加用户
   @Post('add')
-  async addUser(@Body() dto: Users): Promise<any> {
+  async addUser(@Body(CreatUserPipe) dto: CreateUserDto): Promise<any> {
+    console.log('dto', dto)
     const result = await this.userService.create(dto)
     return {
       code: 0,

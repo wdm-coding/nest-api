@@ -38,6 +38,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-member-access': 'off',// 允许访问any类型属性
       '@typescript-eslint/no-unsafe-assignment': 'off',// 允许赋值any类型
       '@typescript-eslint/await-thenable': 'off',// 允许await PromiseLike对象
+      '@typescript-eslint/no-unused-vars': 0, // 警告未使用的变量
       "prettier/prettier": [
         "error",
         {
