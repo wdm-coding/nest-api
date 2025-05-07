@@ -5,6 +5,7 @@ import { UserModule } from './user/user.module'
 import { LogsModule } from './logs/logs.module'
 import { RolesModule } from './roles/roles.module'
 import { typeOrmConfig } from '../ormconfig'
+import { AuthModule } from './auth/auth.module'
 import validationSchema from './config/joi.config'
 @Global() // 全局注册APP模块
 @Module({
@@ -21,7 +22,8 @@ import validationSchema from './config/joi.config'
     LogsModule,
     // 其他模块...
     UserModule,
-    RolesModule
+    RolesModule,
+    AuthModule
   ],
   controllers: [],
   providers: [Logger],

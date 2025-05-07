@@ -1,20 +1,32 @@
-import { Controller, Delete, Get, Post, Inject, LoggerService, Body, Param, Put, Query } from '@nestjs/common'
+import {
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseFilters,
+  Patch,
+  ParseIntPipe,
+  UseGuards
+} from '@nestjs/common'
 import { UserService } from './user.service'
 import { Users } from '../entities/users/users.entity'
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston'
 import { UserQuery } from '../types/query.d'
+import { TypeormFilter } from 'src/filters/typeorm.filter'
+import { CreatUserPipe } from './pipes/creat-user.pipe'
+import { CreateUserDto } from './dto/create-user.dto'
+import { AuthGuard } from '@nestjs/passport'
 
 @Controller('user')
+@UseFilters(new TypeormFilter())
 export class UserController {
-  constructor(
-    private userService: UserService,
-    @Inject(WINSTON_MODULE_NEST_PROVIDER)
-    private logger: LoggerService
-  ) {}
+  constructor(private userService: UserService) {}
   // 查询所有用户
   @Get('list')
-  async getUsers(@Query() query: UserQuery): Promise<any> {
-    console.log('query', query)
+  @UseGuards(AuthGuard('jwt'))
+  async getAllUsers(@Query() query: UserQuery): Promise<any> {
     const result = await this.userService.findAll(query)
     return {
       code: 0,
@@ -24,12 +36,13 @@ export class UserController {
   }
   // 根据id查询用户
   @Get('getUserById/:id')
-  getUser(): Promise<any> {
-    return this.userService.findOne(1)
+  getUserById(@Query('id', ParseIntPipe) id: any): Promise<any> {
+    return this.userService.findOne(id)
   }
   // 添加用户
   @Post('add')
-  async addUser(@Body() dto: Users): Promise<any> {
+  async addUser(@Body(CreatUserPipe) dto: CreateUserDto): Promise<any> {
+    console.log('dto', dto)
     const result = await this.userService.create(dto)
     return {
       code: 0,
@@ -38,9 +51,10 @@ export class UserController {
     }
   }
   // 更新用户信息
-  @Put('edit/:id')
+  @Patch('edit/:id')
   async updateUser(@Param('id') id: number, @Body() dto: Users): Promise<any> {
-    await this.userService.update(id, dto)
+    const res = await this.userService.update(id, dto)
+    console.log('res', res)
     return {
       code: 0,
       msg: 'success',
