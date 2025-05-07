@@ -5,7 +5,7 @@
 ## 2. 创建项目 nest new nest-project
 
 ## 3. 进入项目目录下载依赖包 npm install(node版本需要20.1.0以上版本)
-
+   v20.1.0
 ## 4. 添加.prettierrc配置文件,配置prettier规则
 
 ## 5. 添加eslintrc.js或者eslint.config.mjs配置文件,配置prettier规则
