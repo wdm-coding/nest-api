@@ -1,26 +1,35 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { UserService } from '../user/user.service'
 import { JwtService } from '@nestjs/jwt'
+import * as argon2 from 'argon2'
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService
   ) {}
+  // 登录用户信息
   async signIn(username: string, password: string) {
     const user = await this.userService.findOneByName(username)
-    if (user && user.password === password) {
-      // 将用户名作为JWT的有效载荷的一部分，并将其命名为"username"。同时，"sub"字段被设置为用户的ID。这两个字段在验证和访问用户信息时非常有用。
-      const result = await this.jwtService.signAsync({
-        username,
-        sub: user.id
-      })
-      return result
-    } else {
-      throw new UnauthorizedException('用户名或密码错误')
-    }
+    if (!user) throw new ForbiddenException('用户名不存在')
+    // 用户密码校验
+    const isPasswordValid = await argon2.verify(user.password, password)
+    if (!isPasswordValid) throw new UnauthorizedException('用户名或密码错误')
+    // 生成JWT
+    const result = await this.jwtService.signAsync({
+      username,
+      sub: user.id
+    })
+    return result
   }
-  signUp(username: string, password: string) {
-    return { username, password }
+  // 注册用户信息
+  async signUp(username: string, password: string) {
+    const user = await this.userService.findOneByName(username)
+    if (user) throw new ForbiddenException('用户已存在,请直接登录')
+    // 密码加密
+    const hashPassword = await argon2.hash(password)
+    const userTmp = await this.userService.registerUser({ username, password: hashPassword })
+    return userTmp
   }
 }

@@ -9,21 +9,23 @@ import {
   UseFilters,
   Patch,
   ParseIntPipe,
-  UseGuards
+  UseGuards,
+  UseInterceptors
 } from '@nestjs/common'
 import { UserService } from './user.service'
-import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
 import { TypeormFilter } from '../filters/typeorm.filter'
 import { CreatUserPipe } from './pipes/creat-user.pipe'
 import { CreateUserDto } from './dto/create-user.dto'
-import { AuthGuard } from '@nestjs/passport'
 import { AdminGuard } from '../guards/admin.guard'
 import { JwtGuard } from '../guards/jwt.guard'
+import { SerializeInterceptor } from '../interceptors/serialize.interceptor'
 
 @Controller('user')
 @UseFilters(new TypeormFilter())
 @UseGuards(JwtGuard)
+// 拦截器
+@UseInterceptors(new SerializeInterceptor(CreateUserDto))
 export class UserController {
   constructor(private userService: UserService) {}
   // 查询所有用户
@@ -49,7 +51,6 @@ export class UserController {
   // 添加用户
   @Post('add')
   async addUser(@Body(CreatUserPipe) dto: CreateUserDto): Promise<any> {
-    console.log('dto', dto)
     const result = await this.userService.create(dto)
     return {
       code: 0,
@@ -59,9 +60,8 @@ export class UserController {
   }
   // 更新用户信息
   @Patch('edit/:id')
-  async updateUser(@Param('id') id: number, @Body() dto: Users): Promise<any> {
-    const res = await this.userService.update(id, dto)
-    console.log('res', res)
+  async updateUser(@Param('id') id: number, @Body() dto: any): Promise<any> {
+    await this.userService.update(id, dto)
     return {
       code: 0,
       msg: 'success',

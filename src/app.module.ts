@@ -29,11 +29,11 @@ import { AdminGuard } from './guards/admin.guard'
   ],
   controllers: [],
   providers: [
-    Logger,
-    {
-      provide: APP_GUARD,
-      useClass: AdminGuard // 自定义守卫
-    }
+    Logger
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: AdminGuard // 自定义守卫
+    // }
   ],
   exports: [Logger]
 })

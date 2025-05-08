@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { ForbiddenException, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { In, Repository } from 'typeorm'
 import { Users } from '../entities/users/users.entity'
@@ -75,18 +75,24 @@ export class UserService {
         phone: users.phone
       }
     }
+    const user = await this.findOneByName(users.username)
+    if (user) throw new ForbiddenException('用户已存在')
+    // 密码加密处理argon2库，生成密码哈希值。
+    insetInfo.password = await argon2.hash(users.password)
     const roles = users.roleIds.split(',').map(id => Number(id))
     if (!roles.length) {
-      throw new Error('Role ids are required')
+      throw new Error('角色是必填项')
     }
     insetInfo.roles = await this.rolesRepository.find({
       where: { id: In(roles) } // 查询条件，id在roles数组中。
     })
     const userTmp = this.userRepository.create(insetInfo) as any
-    console.log('userTmp', userTmp)
-
-    // 密码加密处理argon2库，生成密码哈希值。
-    userTmp.password = await argon2.hash(userTmp.password)
+    return this.userRepository.save(userTmp)
+  }
+  // 注册用户信息
+  registerUser(users: any) {
+    const userTmp = this.userRepository.create(users)
+    if (!userTmp) throw new Error('注册失败')
     return this.userRepository.save(userTmp)
   }
   // 查询用户详情信息
@@ -110,7 +116,7 @@ export class UserService {
     }
     const roles = user.roleIds.split(',').map(id => Number(id))
     if (!roles.length) {
-      throw new Error('Role ids are required')
+      throw new Error('角色是必填项')
     }
     insetData.roles = await this.rolesRepository.find({
       where: { id: In(roles) } // 查询条件，id在roles数组中。

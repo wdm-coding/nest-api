@@ -1,3 +1,4 @@
+import { ExceptionHandler } from 'winston'
 import { Logs } from '../logs/logs.entity'
 import { Profile } from '../profile/profile.entity'
 import { Roles } from '../roles/roles.entity'
@@ -12,6 +13,7 @@ import {
   AfterInsert,
   AfterRemove
 } from 'typeorm'
+import { Exclude } from 'class-transformer'
 @Entity() // 实体类装饰器，告诉 TypeORM 这个类是一个实体类。
 export class Users {
   @PrimaryGeneratedColumn() // 主键字段装饰器，告诉 TypeORM 这个属性是主键。
@@ -19,6 +21,7 @@ export class Users {
   @Column({ type: 'varchar', length: 255, unique: true }) // 字段装饰器，告诉 TypeORM 这个属性是一个数据库列。
   username: string
   @Column({ type: 'varchar', length: 255 }) // 字段装饰器，告诉 TypeORM 这个属性是一个数据库列。
+  @Exclude() // 排除属性装饰器，告诉 TypeORM 这个属性不应该被序列化。
   password: string
   @OneToMany(() => Logs, logs => logs.users, { cascade: true }) // 关系装饰器，告诉 TypeORM 这个属性是一对多关系。
   logs: Logs[]
