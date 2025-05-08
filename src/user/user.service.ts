@@ -90,7 +90,13 @@ export class UserService {
     return this.userRepository.save(userTmp)
   }
   // 注册用户信息
-  registerUser(users: any) {
+  async registerUser(users: any) {
+    if (!users.roleIds) {
+      // 添加默认角色
+      users.roles = await this.rolesRepository.find({
+        where: { id: 2 } // 查询条件，id在roles数组中。
+      })
+    }
     const userTmp = this.userRepository.create(users)
     if (!userTmp) throw new Error('注册失败')
     return this.userRepository.save(userTmp)

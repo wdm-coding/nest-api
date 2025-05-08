@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common'
+import { ForbiddenException, HttpException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { UserService } from '../user/user.service'
 import { JwtService } from '@nestjs/jwt'
 import * as argon2 from 'argon2'
@@ -25,6 +25,7 @@ export class AuthService {
   }
   // 注册用户信息
   async signUp(username: string, password: string) {
+    if (!username || !password) throw new HttpException('用户名或密码不能为空', 400)
     const user = await this.userService.findOneByName(username)
     if (user) throw new ForbiddenException('用户已存在,请直接登录')
     // 密码加密
