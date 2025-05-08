@@ -5,6 +5,7 @@ import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
 import { conditionUtils } from '../utils/db.helper'
 import { Roles } from '../entities/roles/roles.entity'
+import * as argon2 from 'argon2'
 @Injectable() // NestJS装饰器，用于将类标记为服务。
 export class UserService {
   constructor(
@@ -56,7 +57,13 @@ export class UserService {
   }
   // 根据username查询用户信息
   findOneByName(username: string) {
-    return this.userRepository.findOne({ where: { username } })
+    return this.userRepository.findOne({
+      where: { username },
+      relations: {
+        profile: true,
+        roles: true
+      }
+    })
   }
   // 创建用户信息
   async create(users: any) {
@@ -75,7 +82,11 @@ export class UserService {
     insetInfo.roles = await this.rolesRepository.find({
       where: { id: In(roles) } // 查询条件，id在roles数组中。
     })
-    const userTmp = this.userRepository.create(insetInfo)
+    const userTmp = this.userRepository.create(insetInfo) as any
+    console.log('userTmp', userTmp)
+
+    // 密码加密处理argon2库，生成密码哈希值。
+    userTmp.password = await argon2.hash(userTmp.password)
     return this.userRepository.save(userTmp)
   }
   // 查询用户详情信息

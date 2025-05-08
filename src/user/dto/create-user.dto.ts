@@ -11,7 +11,7 @@ export class CreateUserDto {
   password: string
   @IsNumber()
   gender: number
-  @IsPhoneNumber()
+  @IsString()
   phone: string
   @IsString()
   address: string

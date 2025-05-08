@@ -14,18 +14,25 @@ import {
 import { UserService } from './user.service'
 import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
-import { TypeormFilter } from 'src/filters/typeorm.filter'
+import { TypeormFilter } from '../filters/typeorm.filter'
 import { CreatUserPipe } from './pipes/creat-user.pipe'
 import { CreateUserDto } from './dto/create-user.dto'
 import { AuthGuard } from '@nestjs/passport'
+import { AdminGuard } from '../guards/admin.guard'
+import { JwtGuard } from '../guards/jwt.guard'
 
 @Controller('user')
 @UseFilters(new TypeormFilter())
+@UseGuards(JwtGuard)
 export class UserController {
   constructor(private userService: UserService) {}
   // 查询所有用户
   @Get('list')
-  @UseGuards(AuthGuard('jwt'))
+  // 1. 装饰器的执行顺序是从下到上
+  // @UseGuards(AdminGuard)
+  // @UseGuards(AuthGuard('jwt'))
+  // 2. 传递多个守卫，执行顺序是从前往后
+  @UseGuards(AdminGuard)
   async getAllUsers(@Query() query: UserQuery): Promise<any> {
     const result = await this.userService.findAll(query)
     return {
