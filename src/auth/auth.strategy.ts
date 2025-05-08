@@ -14,6 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     })
   }
   validate(payload: any) {
+    // 这里可以添加一些验证逻辑，比如检查用户是否存在等
     return payload
   }
 }

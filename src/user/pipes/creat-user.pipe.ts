@@ -4,7 +4,7 @@ import { CreateUserDto } from '../dto/create-user.dto'
 @Injectable()
 export class CreatUserPipe implements PipeTransform {
   transform(value: CreateUserDto, metadata: ArgumentMetadata) {
-    console.log('value', value)
+    // 这里可以对value进行校验，校验不通过抛出异常
     return value
   }
 }

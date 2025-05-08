@@ -4,8 +4,8 @@
 
 ## 2. 创建项目 nest new nest-project
 
-## 3. 进入项目目录下载依赖包 npm install(node版本需要20.1.0以上版本)
-   v20.1.0
+## 3. 进入项目目录下载依赖包 npm install (node版本需要20.1.0以上版本)
+
 ## 4. 添加.prettierrc配置文件,配置prettier规则
 
 ## 5. 添加eslintrc.js或者eslint.config.mjs配置文件,配置prettier规则
@@ -315,8 +315,360 @@ constructor(
 
 ## 12. API开发
 
-## 13. 登录鉴权
+### 分页条件查询，查询条件为空时不查询，不为空时查询。需要动态构建查询条件对象
+1. 在`utils/db.helper.ts`文件中创建查询工具类
+```ts
+// 1. unils文件中封装动态条件对象构建函数db.helper.ts
+import { ObjectLiteral, SelectQueryBuilder } from 'typeorm'
+export const conditionUtils = <T extends ObjectLiteral>(
+  queryBuilder: SelectQueryBuilder<T>,
+  record: Record<string, unknown>
+) => {
+  Object.keys(record).forEach(key => {
+    if (record[key]) {
+      queryBuilder.andWhere(`${key} = :${key}`, { [key]: record[key] })
+    }
+  })
+  return queryBuilder
+}
+```
+2. 调用封装好的函数
+```ts
+async findAll(query: UserQuery) {
+  const { username, roleId, gender, pageNum, pageSize } = query
+  // 分页参数，默认为第一页每页10条数据
+  const take = Number(pageSize) || 10 // 每页显示多少条数据
+  const skip = (Number(pageNum || 1) - 1) * take // 跳过多少条数据
+  // 1. 关联查询
+  const queryBuilder = this.userRepository
+    .createQueryBuilder('users')
+    .leftJoinAndSelect('users.profile', 'profile')
+    .leftJoinAndSelect('users.roles', 'roles')
+    // 2. 动态查询条件，如果条件为空则不添加该条件。(第一个查询条件为1=1，后续的条件为AND条件)
+    .where(username ? 'users.username LIKE :username' : '1=1', username ? { username: `%${username}%` } : {})
+  const searchList = {
+    'roles.id': roleId,
+    'profile.gender': gender
+  }
+  const list = conditionUtils<Users>(queryBuilder, searchList)
+  const total = await list.getCount() // 总条数
+  const result = await list.skip(skip).take(take).getMany()
+  // getRawMany()不直接支持分页，因为它只是执行原始SQL查询。
+  return {
+    pageSize: take, // 每页显示多少条数据
+    pageNum: Number(pageNum || 1), // 当前页码
+    total, // 总条数
+    list: result.map(item => ({
+      userId: item.id,
+      password: '',
+      address: item.profile?.address,
+      gender: item.profile?.gender,
+      phone: item.profile?.phone,
+      username: item.username,
+      roleName: item.roles.map(role => role.name).join(','),
+      roleIds: item.roles.map(role => role.id).join(',')
+    }))
+  }
+}
+```
 
+### 创建typeorm的异常过滤器
+1. 在filters目录下创建typeorm.filter.ts文件
+```bash
+$ nest g f filters/typeorm --flat --no-spec
+```
+2. 编写typeorm异常过滤器
+```ts
+import { ArgumentsHost, Catch, ExceptionFilter } from '@nestjs/common'
+import { QueryFailedError, TypeORMError } from 'typeorm'
+@Catch(TypeORMError)
+export class TypeormFilter implements ExceptionFilter {
+  catch(exception: TypeORMError, host: ArgumentsHost) {
+    const ctx = host.switchToHttp()
+    const response = ctx.getResponse()
+    let msg = exception.message
+    if (exception instanceof QueryFailedError) {
+      const errno = exception.driverError?.errno || null
+      switch (errno) {
+        case 1062: // 唯一约束冲突
+          msg = `字段重复，请检查数据是否已存在`
+          break
+        default:
+          msg = exception.message || '数据库查询异常'
+          break
+      }
+    }
+    response.status(500).json({
+      code: -1,
+      msg,
+      data: null
+    })
+  }
+}
+```
+
+## 14. 管道
+### nestjs内置全局管道注册
+
+```ts
+import { ValidationPipe } from '@nestjs/common'
+app.useGlobalPipes(new ValidationPipe())
+```
+
+### 创建管道
+1. 安装class-validator和class-transformer
++ class-validator 用于验证数据，class-transformer 用于转换数据。
+
+```bash
+$ npm install class-validator class-transformer --save
+```
+
+2. 使用`class-validator`创建校验规则,在`src/user/dto`目录下创建`user-dto.ts`文件
+```ts
+import { IsNotEmpty, IsNumber, IsPhoneNumber, IsString, Length } from 'class-validator'
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(6, 20, {
+    // $value: 'admin', // 当前传入的值
+    // $property: 'username', // 属性名
+    // $target: SigninUserDto, // 类本身
+    // $constraint1: 6, // 最小的长度
+    // $constraint2: 20, // 最大的长度
+    message: '用户名长度必须在6到20之间'
+  })
+  username: string
+  @IsString()
+  @IsNotEmpty()
+  @Length(6, 20, {
+    message: '密码长度必须在6到20之间'
+  })
+  password: string
+  @IsNumber()
+  gender: number
+  @IsString()
+  phone: string
+  @IsString()
+  address: string
+  @IsString()
+  roleIds: string
+}
+```
+3. 在`src/user/pipes`目录下创建`userPipe.ts`文件实现自定义管道
+```ts
+import { ArgumentMetadata, Injectable, PipeTransform } from '@nestjs/common'
+import { CreateUserDto } from '../dto/create-user.dto'
+@Injectable()
+export class CreatUserPipe implements PipeTransform {
+  transform(value: CreateUserDto, metadata: ArgumentMetadata) {
+    // 这里可以对value进行校验，校验不通过抛出异常
+    return value
+  }
+}
+```
+
+4. 在`src/user/user.controller.ts`中使用自定义管道和DTO
+
+```ts
+// 添加用户
+@Post('add')
+async addUser(@Body(CreatUserPipe) dto: CreateUserDto): Promise<any> {
+  console.log('dto', dto)
+  const result = await this.userService.create(dto)
+  return {
+    code: 0,
+    msg: 'success',
+    data: result
+  }
+}
+```
+5. 在`src/user/user.controller.ts`中使用单个变量校验
++ ParseIntPipe 用于将字符串转换为数字，如果转换失败会抛出异常。
+```ts
+// 根据id查询用户
+@Get('getUserById/:id')
+getUserById(@Query('id', ParseIntPipe) id: any): Promise<any> {
+  return this.userService.findOne(id)
+}
+```
+
+## 15. JWT认证
+
+### 安装依赖
++ @nestjs/jwt 模块提供了JWT认证的支持。
++ @nestjs/passport 模块提供了Passport的支持，用于实现OAuth2.0、JWT等认证方式。
++ passport 是一个Node.js中间件，用于实现身份验证。
++ passport-jwt 是一个Passport的JWT策略，用于实现JWT认证。
+```bash
+$ npm install @nestjs/jwt @nestjs/passport passport passport-jwt --save
+```
+
+### 创建Auth模块
+
+1. 生成Auth模块
+```bash
+$ nest g module auth --no-spec
+$ nest g controller auth --no-spec
+$ nest g service auth --no-spec
+```
+2. 创建`auth/auth.strategy.ts`策略文件
+```ts
+import { ExtractJwt, Strategy } from 'passport-jwt'
+import { PassportStrategy } from '@nestjs/passport'
+import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { EnvConfig } from '../enum/env.enum'
+@Injectable()
+// 扩展passport-jwt的策略类，用于验证token是否有效
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(protected configService: ConfigService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // 从请求头中提取token
+      ignoreExpiration: false, // 忽略过期时间
+      secretOrKey: configService.get(EnvConfig.JWT_SECRET) // 密钥
+    })
+  }
+  validate(payload: any) {
+    // 这里可以添加一些验证逻辑，比如检查用户是否存在等
+    return payload
+  }
+}
+```
+
+3. 在`auth.module.ts`中导入`JwtModule、PassportModule、JwtStrategy`
+```ts
+import { Module } from '@nestjs/common'
+import { PassportModule } from '@nestjs/passport'
+import { JwtModule } from '@nestjs/jwt'
+import { AuthService } from './auth.service'
+import { AuthController } from './auth.controller'
+import { UserModule } from '../user/user.module'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { EnvConfig } from '../enum/env.enum'
+import { JwtStrategy } from './auth.strategy'
+@Module({
+  imports: [
+    UserModule,
+    PassportModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        return {
+          secret: configService.get(EnvConfig.JWT_SECRET), // 密钥
+          signOptions: {
+            expiresIn: '1d' // 过期时间 1天
+          }
+        }
+      },
+      inject: [ConfigService] // 注入配置服务
+    })
+  ],
+  providers: [AuthService, JwtStrategy], // 注入策略服务
+  controllers: [AuthController]
+})
+export class AuthModule {}
+```
+
+4. 在`auth.service.ts`中实现登录接口，通过@nestjs/jwt的jwtService生成token
+```ts
+import { JwtService } from '@nestjs/jwt'
+constructor(
+  private readonly userService: UserService,
+  private readonly jwtService: JwtService
+) {}
+// 登录用户信息
+async signIn(username: string, password: string) {
+  const user = await this.userService.findOneByName(username)
+  if (!user) throw new ForbiddenException('用户名不存在')
+  // 用户密码校验
+  const isPasswordValid = await argon2.verify(user.password, password)
+  if (!isPasswordValid) throw new UnauthorizedException('用户名或密码错误')
+  // 生成JWT
+  const result = await this.jwtService.signAsync({
+    username,
+    sub: user.id
+  })
+  return result
+}
+```
+
+5. 在`auth.controller.ts`中实现登录接口
+```ts
+constructor(private authService: AuthService) {}
+@Post('signin') // 登录
+async signIn(@Body() dto: SigninUserDto) {
+  const { username, password } = dto
+  const token = await this.authService.signIn(username, password)
+  return {
+    code: 0,
+    message: '登录成功',
+    data: token
+  }
+}
+```
+
+6. 在`src/guards/jwt.guard.ts`中实现JWT守卫
+```ts
+import { AuthGuard } from '@nestjs/passport'
+export class JwtGuard extends AuthGuard('jwt') {
+  constructor() {
+    super()
+  }
+}
+```
+7. 在`src/guards/admin.guard.ts`中实现admin角色权限守卫
+```ts
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common'
+import { UserService } from '../user/user.service'
+import { Users } from '../entities/users/users.entity'
+
+@Injectable()
+export class AdminGuard implements CanActivate {
+  constructor(private userService: UserService) {}
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    // 1. 获取请求对象
+    const req = context.switchToHttp().getRequest()
+    // 2. 获取请求头中的token, 解析token, 获取其中的用户信息, 判断用户是否为拥有角色权限
+    const user = (await this.userService.findOneByName(req.headers['username'])) as Users
+    if (user.roles.find(role => role.code === 'admin')) {
+      // 如果用户是管理员，则返回true，否则返回false。
+      return true
+    } else {
+      return false
+    }
+  }
+}
+```
+8. 在任意模块中`module.ts`全局使用JWT守卫
+```ts
+import { APP_GUARD } from '@nestjs/core'
+import { JwtGuard } from './guards/jwt.guard'
+@Module({
+  imports: [],
+  controllers: []
+  providers: [{
+    provide: APP_GUARD,
+    useClass: JwtGuard,
+  }], // 注入全局守卫
+  exports: []
+})
+```
+9. 在局部接口中使用守卫
+```ts
+// 在控制器顶部使用jwt守卫
+@UseGuards(AdminGuard) // 使用管理员权限守卫
+// 在需要角色权限的接口上使用admin守卫
+@Get('list')
+@UseGuards(AdminGuard)
+async getAllUsers(@Query() query: UserQuery): Promise<any> {
+  const result = await this.userService.findAll(query)
+  return {
+    code: 0,
+    msg: 'success',
+    data: result
+  }
+}
+```
 
 
 ## 启动项目 
