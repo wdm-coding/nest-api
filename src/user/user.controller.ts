@@ -20,6 +20,7 @@ import { AdminGuard } from '../guards/admin.guard'
 import { JwtGuard } from '../guards/jwt.guard'
 import { SerializeInterceptor } from '../interceptors/serialize.interceptor'
 import { ResponseInterceptor } from '../interceptors/response.interceptor'
+import { EditUserGuard } from '../guards/editUser.guard'
 
 @Controller('user')
 @TypeormDecorator()
@@ -29,7 +30,6 @@ export class UserController {
   constructor(private userService: UserService) {}
   // 查询所有用户
   @Get('list')
-  @UseGuards(AdminGuard)
   async getAllUsers(@Query() query: UserQuery): Promise<any> {
     const result = await this.userService.findAll(query)
     return result
@@ -41,6 +41,7 @@ export class UserController {
   }
   // 添加用户
   @Post('add')
+  @UseGuards(AdminGuard)
   @UseInterceptors(new SerializeInterceptor(CreateUserDto))
   async addUser(@Body(CreatUserPipe) dto: CreateUserDto): Promise<any> {
     const result = await this.userService.create(dto)
@@ -48,6 +49,7 @@ export class UserController {
   }
   // 更新用户信息
   @Patch('edit/:id')
+  @UseGuards(EditUserGuard)
   @UseInterceptors(new SerializeInterceptor(updateUserDto))
   async updateUser(@Param('id') id: number, @Body() dto: updateUserDto): Promise<any> {
     const result = await this.userService.update(id, dto)
@@ -55,6 +57,7 @@ export class UserController {
   }
   // 删除用户信息
   @Delete('delete/:id')
+  @UseGuards(EditUserGuard)
   async deleteUser(@Param('id') id: number): Promise<any> {
     await this.userService.remove(id)
     return { id }
