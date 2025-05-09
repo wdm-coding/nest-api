@@ -1,6 +1,6 @@
-import { ForbiddenException, Injectable } from '@nestjs/common'
+import { HttpException, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { In, Repository } from 'typeorm'
+import { In, Not, Repository } from 'typeorm'
 import { Users } from '../entities/users/users.entity'
 import { UserQuery } from '../types/query.d'
 import { conditionUtils } from '../utils/db.helper'
@@ -34,14 +34,12 @@ export class UserService {
     const list = conditionUtils<Users>(queryBuilder, searchList)
     const total = await list.getCount() // 总条数
     const result = await list.skip(skip).take(take).getMany()
-    // getRawMany()不直接支持分页，因为它只是执行原始SQL查询。
     return {
       pageSize: take, // 每页显示多少条数据
       pageNum: Number(pageNum || 1), // 当前页码
       total, // 总条数
       list: result.map(item => ({
         userId: item.id,
-        password: '',
         address: item.profile?.address,
         gender: item.profile?.gender,
         phone: item.profile?.phone,
@@ -76,16 +74,15 @@ export class UserService {
       }
     }
     const user = await this.findOneByName(users.username)
-    if (user) throw new ForbiddenException('用户已存在')
+    if (user) throw new HttpException('用户名已存在', 200)
     // 密码加密处理argon2库，生成密码哈希值。
     insetInfo.password = await argon2.hash(users.password)
     const roles = users.roleIds.split(',').map(id => Number(id))
-    if (!roles.length) {
-      throw new Error('角色是必填项')
+    if (roles.length) {
+      insetInfo.roles = await this.rolesRepository.find({
+        where: { id: In(roles) } // 查询条件，id在roles数组中。
+      })
     }
-    insetInfo.roles = await this.rolesRepository.find({
-      where: { id: In(roles) } // 查询条件，id在roles数组中。
-    })
     const userTmp = this.userRepository.create(insetInfo) as any
     return this.userRepository.save(userTmp)
   }
@@ -98,17 +95,15 @@ export class UserService {
     const userTmp = this.userRepository.create({ ...users, roles })
     return this.userRepository.save(userTmp)
   }
-  // 查询用户详情信息
-  findProfile(id: number) {
-    return this.userRepository.findOne({
-      where: { id },
-      relations: {
-        profile: true
-      }
-    })
-  }
   // 更新用户信息
   async update(id: number, user: any) {
+    const existingUser = await this.userRepository.findOne({
+      where: {
+        username: user.username,
+        id: Not(id) // 排除当前用户
+      }
+    })
+    if (existingUser) throw new HttpException('用户名已存在', 200)
     const insetData = {
       ...user,
       profile: {
@@ -118,22 +113,30 @@ export class UserService {
       }
     }
     const roles = user.roleIds.split(',').map(id => Number(id))
-    if (!roles.length) {
-      throw new Error('角色是必填项')
+    if (roles.length) {
+      insetData.roles = await this.rolesRepository.find({
+        where: { id: In(roles) } // 查询条件，id在roles数组中。
+      })
     }
-    insetData.roles = await this.rolesRepository.find({
-      where: { id: In(roles) } // 查询条件，id在roles数组中。
-    })
     const userTemp = await this.findProfile(id)
-    if (!userTemp) {
-      throw new Error('User not found')
-    }
+    if (!userTemp) throw new HttpException('用户id不存在', 200)
     const newUser = this.userRepository.merge(userTemp, insetData)
     return this.userRepository.save(newUser)
   }
   // 删除用户信息
   async remove(id: number) {
-    const user = await this.findOne(id)
-    return user && this.userRepository.remove(user)
+    const userTemp = await this.findOne(id)
+    if (!userTemp) throw new HttpException('用户id不存在', 200)
+    return this.userRepository.remove(userTemp)
+  }
+  // 查询用户详情信息
+  findProfile(id: number) {
+    return this.userRepository.findOne({
+      where: { id },
+      relations: {
+        profile: true,
+        roles: true
+      }
+    })
   }
 }

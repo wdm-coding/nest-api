@@ -14,17 +14,17 @@ import {
 import { UserService } from './user.service'
 import { UserQuery } from '../types/query.d'
 import { TypeormDecorator } from '../decotator/typeorm.decotator'
-import { CreatUserPipe } from './pipes/creat-user.pipe'
-import { CreateUserDto } from './dto/create-user.dto'
+import { CreatUserPipe } from './pipes/user.pipe'
+import { CreateUserDto, updateUserDto } from './dto/user.dto'
 import { AdminGuard } from '../guards/admin.guard'
 import { JwtGuard } from '../guards/jwt.guard'
 import { SerializeInterceptor } from '../interceptors/serialize.interceptor'
+import { ResponseInterceptor } from '../interceptors/response.interceptor'
 
 @Controller('user')
 @TypeormDecorator()
 @UseGuards(JwtGuard)
-// 拦截器
-@UseInterceptors(new SerializeInterceptor(CreateUserDto))
+@UseInterceptors(new ResponseInterceptor())
 export class UserController {
   constructor(private userService: UserService) {}
   // 查询所有用户
@@ -32,11 +32,7 @@ export class UserController {
   @UseGuards(AdminGuard)
   async getAllUsers(@Query() query: UserQuery): Promise<any> {
     const result = await this.userService.findAll(query)
-    return {
-      code: 0,
-      msg: 'success',
-      data: result
-    }
+    return result
   }
   // 根据id查询用户
   @Get('getUserById/:id')
@@ -45,51 +41,28 @@ export class UserController {
   }
   // 添加用户
   @Post('add')
+  @UseInterceptors(new SerializeInterceptor(CreateUserDto))
   async addUser(@Body(CreatUserPipe) dto: CreateUserDto): Promise<any> {
     const result = await this.userService.create(dto)
-    return {
-      code: 0,
-      msg: 'success',
-      data: result
-    }
+    return result
   }
   // 更新用户信息
   @Patch('edit/:id')
-  async updateUser(@Param('id') id: number, @Body() dto: any): Promise<any> {
-    await this.userService.update(id, dto)
-    return {
-      code: 0,
-      msg: 'success',
-      data: null
-    }
+  @UseInterceptors(new SerializeInterceptor(updateUserDto))
+  async updateUser(@Param('id') id: number, @Body() dto: updateUserDto): Promise<any> {
+    const result = await this.userService.update(id, dto)
+    return result
   }
   // 删除用户信息
   @Delete('delete/:id')
   async deleteUser(@Param('id') id: number): Promise<any> {
-    const user = await this.userService.findOne(id)
-    if (user?.username === 'admin') {
-      return {
-        code: 1,
-        msg: '超级管理员不能删除',
-        data: null
-      }
-    } else {
-      await this.userService.remove(id)
-      return {
-        code: 0,
-        msg: 'success',
-        data: null
-      }
-    }
+    await this.userService.remove(id)
+    return { id }
   }
   // 查询用户详情信息
   @Get('profile/:id')
-  async getProfile(): Promise<any> {
-    const data = await this.userService.findProfile(1)
-    return {
-      code: 0,
-      msg: 'success',
-      data
-    }
+  async getProfile(@Param('id') id: number): Promise<any> {
+    const data = await this.userService.findProfile(id)
+    return data
   }
 }
