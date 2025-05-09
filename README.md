@@ -670,6 +670,78 @@ async getAllUsers(@Query() query: UserQuery): Promise<any> {
 }
 ```
 
+## argon2密码加密
+1. 安装argon2库
+```bash
+npm install argon2
+```
+2. 创建账号时使用argon2加密密码
+```ts
+import * as argon2 from 'argon2'
+const hashPassword = await argon2.hash(password)
+```
+3. 登录时使用argon2验证密码
+```ts
+const isPasswordValid = await argon2.verify(user.password, password)
+```
+
+## 拦截器
+
+1. 创建拦截器`src/interceptors/serialize.interceptor.ts`
+```ts
+$ nest g interceptor interceptors/serialize --no-spec
+```
+2. 在拦截器中实现序列化逻辑
+```ts
+export class SerializeInterceptor implements NestInterceptor {
+  constructor(private dto: any) {}
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const req = context.switchToHttp().getRequest()
+    console.log('拦截器执行之前')
+    return next.handle().pipe(
+      map(data => {
+        console.log('拦截器执行之后')
+        const result = plainToInstance(this.dto, data, {
+          excludeExtraneousValues: true // 排除掉多余的值,必须设置Exporse或者Exclude
+        })
+        return result
+      })
+    )
+  }
+}
+```
+3. 将拦截器封装为一个装饰器`src/decotator/serialize.decorator.ts`
+```ts
+import { UseInterceptors } from '@nestjs/common'
+import { SerializeInterceptor } from '../interceptors/serialize.interceptor'
+interface ClassConstructor {
+  new (...args: any[]): any
+}
+export function Serialize(dto: ClassConstructor) {
+  return UseInterceptors(new SerializeInterceptor(dto))
+}
+```
+4. 在控制器中使用拦截器装饰器`src/user/user.controller.ts`
+```ts
+@Serialize(UserDto)
+async getAllUsers(@Query() query: UserQuery): Promise<any> {
+  const result = await this.userService.findAll(query)
+  return {
+    code: 0,
+    msg: 'success',
+    data: result
+  }
+}
+```
+
+
+
+
+
+
+
+
+
 
 ## 启动项目 
 1. docker-compose up -d
