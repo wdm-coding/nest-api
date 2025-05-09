@@ -1,36 +1,22 @@
 import { Body, ClassSerializerInterceptor, Controller, Post, UseInterceptors } from '@nestjs/common'
 import { AuthService } from './auth.service'
-import { SigninUserDto } from './dto/signin-user.dto'
+import { SignupUserDto, SigninUserDto } from './dto/auth-user.dto'
+import { SerializeInterceptor } from '../interceptors/serialize.interceptor'
+import { ResponseInterceptor } from '../interceptors/response.interceptor'
 @Controller('auth')
-@UseInterceptors(ClassSerializerInterceptor)
+@UseInterceptors(new ResponseInterceptor())
 export class AuthController {
   constructor(private authService: AuthService) {}
+  @Post('signup') // 注册
+  @UseInterceptors(new SerializeInterceptor(SignupUserDto))
+  async signUp(@Body() dto: SignupUserDto) {
+    const result = await this.authService.signUp(dto)
+    return result
+  }
   @Post('signin') // 登录
   async signIn(@Body() dto: SigninUserDto) {
     const { username, password } = dto
     const token = await this.authService.signIn(username, password)
-    return {
-      code: 0,
-      message: '登录成功',
-      data: token
-    }
-  }
-  @Post('signup') // 注册
-  async signUp(@Body() dto: SigninUserDto) {
-    const { username, password } = dto
-    const result = await this.authService.signUp(username, password)
-    if (result) {
-      return {
-        code: 0,
-        message: '注册成功',
-        data: null
-      }
-    } else {
-      return {
-        code: 1,
-        message: '注册失败',
-        data: null
-      }
-    }
+    return token
   }
 }

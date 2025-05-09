@@ -6,7 +6,6 @@ import {
   Body,
   Param,
   Query,
-  UseFilters,
   Patch,
   ParseIntPipe,
   UseGuards,
@@ -14,7 +13,7 @@ import {
 } from '@nestjs/common'
 import { UserService } from './user.service'
 import { UserQuery } from '../types/query.d'
-import { TypeormFilter } from '../filters/typeorm.filter'
+import { TypeormDecorator } from '../decotator/typeorm.decotator'
 import { CreatUserPipe } from './pipes/creat-user.pipe'
 import { CreateUserDto } from './dto/create-user.dto'
 import { AdminGuard } from '../guards/admin.guard'
@@ -22,7 +21,7 @@ import { JwtGuard } from '../guards/jwt.guard'
 import { SerializeInterceptor } from '../interceptors/serialize.interceptor'
 
 @Controller('user')
-@UseFilters(new TypeormFilter())
+@TypeormDecorator()
 @UseGuards(JwtGuard)
 // 拦截器
 @UseInterceptors(new SerializeInterceptor(CreateUserDto))
@@ -30,10 +29,6 @@ export class UserController {
   constructor(private userService: UserService) {}
   // 查询所有用户
   @Get('list')
-  // 1. 装饰器的执行顺序是从下到上
-  // @UseGuards(AdminGuard)
-  // @UseGuards(AuthGuard('jwt'))
-  // 2. 传递多个守卫，执行顺序是从前往后
   @UseGuards(AdminGuard)
   async getAllUsers(@Query() query: UserQuery): Promise<any> {
     const result = await this.userService.findAll(query)

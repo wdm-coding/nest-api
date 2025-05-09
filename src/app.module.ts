@@ -7,8 +7,6 @@ import { RolesModule } from './roles/roles.module'
 import { typeOrmConfig } from '../ormconfig'
 import { AuthModule } from './auth/auth.module'
 import validationSchema from './config/joi.config'
-import { APP_GUARD } from '@nestjs/core'
-import { AdminGuard } from './guards/admin.guard'
 @Global() // 全局注册APP模块
 @Module({
   imports: [
@@ -28,13 +26,7 @@ import { AdminGuard } from './guards/admin.guard'
     AuthModule
   ],
   controllers: [],
-  providers: [
-    Logger
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: AdminGuard // 自定义守卫
-    // }
-  ],
+  providers: [Logger],
   exports: [Logger]
 })
 export class AppModule {}

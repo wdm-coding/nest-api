@@ -25,7 +25,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status: httpStatus, // 状态码
       error: exception.response || '未知错误' // 错误信息
     }
+    const error = responseBody.error
+    const returnInfo = {
+      code: -1,
+      msg: '服务器异常',
+      data: null
+    }
+    if (typeof error === 'string') {
+      returnInfo.msg = error
+    }
+    if (typeof error === 'object' && error.statusCode) {
+      const msg = error.message instanceof Array ? error.message[0] : error.message
+      returnInfo.msg = msg
+    }
     this.logger.error('捕获异常: ', responseBody) // 打印日志信息
-    httpAdapter.reply(response, responseBody, httpStatus) // 返回响应信息
+    httpAdapter.reply(response, returnInfo, httpStatus) // 返回响应信息
   }
 }
